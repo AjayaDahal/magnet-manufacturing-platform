@@ -1,0 +1,61 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: magnet_platform
+      POSTGRES_USER: magnet
+      POSTGRES_PASSWORD: magnet_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  prepress:
+    build:
+      context: ../../backend/prepress
+      dockerfile: Dockerfile
+    ports:
+      - "8010:8000"
+    depends_on:
+      - postgres
+
+  nesting:
+    build:
+      context: ../../backend/nesting
+      dockerfile: Dockerfile
+    ports:
+      - "8011:8000"
+    depends_on:
+      - postgres
+
+  mis:
+    build:
+      context: ../../backend/mis
+      dockerfile: Dockerfile
+    ports:
+      - "8012:8000"
+    depends_on:
+      - postgres
+
+  commerce:
+    build:
+      context: ../../commerce
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    depends_on:
+      - postgres
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3000"
+    depends_on:
+      - commerce
+      - prepress
+
+volumes:
+  pgdata:
