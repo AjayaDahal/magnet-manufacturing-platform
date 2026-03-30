@@ -1,0 +1,13 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.18
+opencv-python-headless==4.10.0.84
+numpy==2.2.1
+Pillow==11.1.0
+rembg==2.0.62
+onnxruntime==1.20.1
+svgwrite==1.4.3
+aiofiles==24.1.0
+pytest==8.3.4
+pytest-asyncio==0.25.0
+httpx==0.28.1
