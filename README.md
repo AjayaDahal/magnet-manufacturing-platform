@@ -4,41 +4,44 @@ Custom photo magnet e-commerce platform with consumer storefront and B2B bulk or
 
 ## Architecture
 
-- **commerce/** — Express + TypeORM REST API (PostgreSQL)
-- **frontend/** — Next.js 14 + Tailwind CSS storefront & B2B portal
+- **frontend/** — Next.js 14 + Tailwind CSS static site (GitHub Pages)
+- **Firebase Realtime Database** — All data (products, carts, orders) stored in RTDB
+- **commerce/** — Legacy Express + TypeORM API (kept for reference, not required)
+
+The frontend talks **directly to Firebase RTDB** from the client — no backend server needed.
 
 ## Quick Start
 
-### With Docker Compose
-```bash
-docker compose up --build
-```
-- Frontend: http://localhost:3000
-- API: http://localhost:9000
-
-### Manual Setup
-
-1. **Database** — PostgreSQL on port 5433:
-```bash
-docker run -d --name magnet-pg -p 5433:5432 \
-  -e POSTGRES_DB=magnet_platform \
-  -e POSTGRES_USER=magnet \
-  -e POSTGRES_PASSWORD=magnet_dev \
-  postgres:16-alpine
-```
-
-2. **Commerce API**:
-```bash
-cd commerce && npm install
-npm run migrate
-npm run seed    # Load sample products
-npm run dev     # Runs on :9000
-```
-
-3. **Frontend**:
+### 1. Install & Run Frontend
 ```bash
 cd frontend && npm install
 npm run dev     # Runs on :3000
+```
+
+### 2. Seed Product Data (one-time)
+```bash
+cd frontend
+NODE_PATH=./node_modules npx tsx ../scripts/seed-firebase.ts
+```
+
+### 3. Build for GitHub Pages
+```bash
+cd frontend && npm run build
+# Static output in frontend/out/
+```
+
+## Firebase Setup
+
+- **Project:** magnet-manufacturing
+- **RTDB URL:** https://magnet-manufacturing-default-rtdb.firebaseio.com
+- **Config:** `firebase-config.js` (repo root) and `frontend/src/lib/firebase.ts`
+
+### RTDB Structure
+```
+/products/{productId}     — Product catalog with variants & pricing tiers
+/carts/{cartId}           — Shopping carts
+/orders/{orderId}         — Completed orders
+/bulk-orders/{id}         — B2B bulk order records
 ```
 
 ## Features
@@ -51,35 +54,14 @@ npm run dev     # Runs on :3000
 - Cart and checkout flow
 
 ### B2B Portal
-- Email-based login
 - CSV bulk upload (columns: name, photo_url, quantity, size)
-- Server-side validation with error reporting
+- Client-side validation with error reporting
 - Estimated total with tiered pricing
-- Order tracking and invoice history
+- Order tracking
 
 ### Multi-Tenant
-- Tenant management API (slug, branding, settings)
+- Tenant management via RTDB
 - Products scoped to tenants
-- Tenant-specific storefronts
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/products | List products |
-| GET | /api/products/:id | Get product detail |
-| POST | /api/products | Create product |
-| GET | /api/products/:id/price | Calculate tiered price |
-| POST | /api/cart | Create cart |
-| GET | /api/cart/:id | Get cart |
-| POST | /api/cart/:id/items | Add to cart |
-| POST | /api/checkout | Place order |
-| GET | /api/checkout/orders | List orders |
-| POST | /api/bulk-orders/upload | Upload CSV bulk order |
-| GET | /api/bulk-orders/:id | Get bulk order status |
-| POST | /api/bulk-orders/:id/confirm | Confirm bulk order |
-| POST | /api/uploads/photo | Upload photo |
-| GET/POST | /api/tenants | Manage tenants |
 
 ## Product Model
 
@@ -88,3 +70,7 @@ npm run dev     # Runs on :3000
 - **Sizes**: 2×3", 3×4", 4×6", 5×7", 8×10"
 - **Finishes**: Matte, Glossy, Satin, Soft Touch
 - **Pricing Tiers**: 1-9, 10-49, 50-99, 100-499, 500-999, 1000+
+
+## Legacy Backend
+
+The original Express/PostgreSQL backend is preserved in `commerce/` and can be started with Docker Compose if needed, but the frontend no longer depends on it.

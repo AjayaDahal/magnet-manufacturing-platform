@@ -10,9 +10,7 @@ const nextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000",
-  },
+  // Firebase RTDB is used directly from client-side — no API proxy needed
 };
 
 module.exports = nextConfig;

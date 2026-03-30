@@ -1,105 +1,115 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
-    ...options,
-  });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `API error: ${res.status}`);
-  }
-  return res.json();
-}
+import * as db from "./firebase-db";
 
 export const api = {
   products: {
-    list: (params?: Record<string, string>) => {
-      const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-      return request<{ products: import("@/types").Product[] }>(`/api/products${qs}`);
+    list: async (params?: Record<string, string>) => {
+      const products = await db.listProducts(params);
+      return { products };
     },
-    get: (id: string) =>
-      request<{ product: import("@/types").Product }>(`/api/products/${id}`),
-    getPrice: (productId: string, variantId: string, quantity: number) =>
-      request<{ unitPrice: number; total: number; quantity: number; tiered: boolean }>(
-        `/api/products/${productId}/price?variantId=${variantId}&quantity=${quantity}`
-      ),
+    get: async (id: string) => {
+      const product = await db.getProduct(id);
+      if (!product) throw new Error("Product not found");
+      return { product };
+    },
+    getPrice: async (productId: string, variantId: string, quantity: number) => {
+      const product = await db.getProduct(productId);
+      if (!product) throw new Error("Product not found");
+      return db.getPrice(product, variantId, quantity);
+    },
   },
 
   cart: {
-    create: (tenantId?: string) =>
-      request<{ cart: import("@/types").Cart }>("/api/cart", {
-        method: "POST",
-        body: JSON.stringify({ tenantId }),
-      }),
-    get: (id: string) =>
-      request<{ cart: import("@/types").Cart }>(`/api/cart/${id}`),
-    addItem: (cartId: string, data: { variantId: string; quantity: number; customPhotoUrl?: string; personalizationText?: string }) =>
-      request<{ item: import("@/types").CartItem }>(`/api/cart/${cartId}/items`, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
-    updateItem: (cartId: string, itemId: string, quantity: number) =>
-      request<{ item: import("@/types").CartItem }>(`/api/cart/${cartId}/items/${itemId}`, {
-        method: "PUT",
-        body: JSON.stringify({ quantity }),
-      }),
-    removeItem: (cartId: string, itemId: string) =>
-      request<{ success: boolean }>(`/api/cart/${cartId}/items/${itemId}`, {
-        method: "DELETE",
-      }),
+    create: async (tenantId?: string) => {
+      const cart = await db.createCart(tenantId);
+      return { cart };
+    },
+    get: async (id: string) => {
+      const cart = await db.getCart(id);
+      if (!cart) throw new Error("Cart not found");
+      return { cart };
+    },
+    addItem: async (cartId: string, data: { variantId: string; quantity: number; customPhotoUrl?: string; personalizationText?: string }) => {
+      const item = await db.addCartItem(cartId, data);
+      return { item };
+    },
+    updateItem: async (cartId: string, itemId: string, quantity: number) => {
+      const item = await db.updateCartItem(cartId, itemId, quantity);
+      return { item };
+    },
+    removeItem: async (cartId: string, itemId: string) => {
+      const success = await db.removeCartItem(cartId, itemId);
+      return { success };
+    },
   },
 
   checkout: {
-    create: (data: { cartId: string; email: string; shippingAddress?: Record<string, string> }) =>
-      request<{ order: import("@/types").Order }>("/api/checkout", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
-    getOrder: (id: string) =>
-      request<{ order: import("@/types").Order }>(`/api/checkout/orders/${id}`),
-    listOrders: (params?: Record<string, string>) => {
-      const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-      return request<{ orders: import("@/types").Order[] }>(`/api/checkout/orders${qs}`);
+    create: async (data: { cartId: string; email: string; shippingAddress?: Record<string, string> }) => {
+      const order = await db.createOrder(data);
+      return { order };
+    },
+    getOrder: async (id: string) => {
+      const order = await db.getOrder(id);
+      if (!order) throw new Error("Order not found");
+      return { order };
+    },
+    listOrders: async (params?: Record<string, string>) => {
+      const orders = await db.listOrders(params);
+      return { orders };
     },
   },
 
   bulkOrders: {
     upload: async (file: File, email: string, tenantId?: string) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("email", email);
-      if (tenantId) formData.append("tenantId", tenantId);
+      // Parse CSV client-side
+      const text = await file.text();
+      const lines = text.split("\n").filter((l) => l.trim());
+      const header = lines.shift()!.split(",").map((h) => h.trim().toLowerCase());
 
-      const res = await fetch(`${API_URL}/api/bulk-orders/upload`, {
-        method: "POST",
-        body: formData,
+      const parsed = lines.map((line) => {
+        const cols = line.split(",").map((c) => c.trim());
+        const row: Record<string, string> = {};
+        header.forEach((h, i) => (row[h] = cols[i] || ""));
+        return {
+          recipientName: row["name"] || row["recipient_name"] || "",
+          photoUrl: row["photo_url"] || row["photo"] || undefined,
+          quantity: parseInt(row["quantity"] || "1", 10),
+          size: row["size"] || "medium",
+          finish: row["finish"] || undefined,
+        };
       });
-      if (!res.ok) throw new Error("Upload failed");
-      return res.json() as Promise<{ bulkOrder: import("@/types").BulkOrder; summary: { total: number; valid: number; errors: number; estimatedTotal: number } }>;
+
+      return db.createBulkOrder({
+        email,
+        lines: parsed,
+        originalFilename: file.name,
+        tenantId,
+      });
     },
-    get: (id: string) =>
-      request<{ bulkOrder: import("@/types").BulkOrder }>(`/api/bulk-orders/${id}`),
-    list: (params?: Record<string, string>) => {
-      const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-      return request<{ bulkOrders: import("@/types").BulkOrder[] }>(`/api/bulk-orders${qs}`);
+    get: async (id: string) => {
+      const bulkOrder = await db.getBulkOrder(id);
+      if (!bulkOrder) throw new Error("Bulk order not found");
+      return { bulkOrder };
     },
-    confirm: (id: string) =>
-      request<{ bulkOrder: import("@/types").BulkOrder }>(`/api/bulk-orders/${id}/confirm`, {
-        method: "POST",
-      }),
+    list: async (params?: Record<string, string>) => {
+      const bulkOrders = await db.listBulkOrders(params);
+      return { bulkOrders };
+    },
+    confirm: async (id: string) => {
+      const bulkOrder = await db.confirmBulkOrder(id);
+      if (!bulkOrder) throw new Error("Bulk order not found");
+      return { bulkOrder };
+    },
   },
 
   uploads: {
     photo: async (file: File) => {
-      const formData = new FormData();
-      formData.append("photo", file);
-      const res = await fetch(`${API_URL}/api/uploads/photo`, {
-        method: "POST",
-        body: formData,
+      // For static site without backend, convert to data URL
+      return new Promise<{ url: string; filename: string }>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ url: reader.result as string, filename: file.name });
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
-      if (!res.ok) throw new Error("Upload failed");
-      return res.json() as Promise<{ url: string; filename: string }>;
     },
   },
 };
