@@ -12,7 +12,10 @@ import cv2
 import numpy as np
 import svgwrite
 from PIL import Image
-from rembg import remove as rembg_remove
+try:
+    from rembg import remove as rembg_remove
+except (ImportError, SystemExit):
+    rembg_remove = None  # rembg optional — requires onnxruntime
 
 
 class MagnetShape(str, Enum):
@@ -76,6 +79,8 @@ def _to_png_bytes(img_array: np.ndarray) -> bytes:
 
 def remove_background(image_data: bytes) -> bytes:
     """Remove background using rembg. Returns PNG bytes with transparency."""
+    if rembg_remove is None:
+        raise RuntimeError("rembg is not available — install with: pip install rembg[gpu] or rembg[cpu]")
     return rembg_remove(image_data)
 
 

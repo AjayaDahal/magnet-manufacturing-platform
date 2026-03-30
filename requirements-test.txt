@@ -10,6 +10,6 @@ svgwrite>=1.4
 pydantic>=2.0
 pydantic-settings>=2.0
 rectpack>=0.1
-rembg>=2.0
+# rembg>=2.0  # optional — requires onnxruntime, skipped in CI
 reportlab>=4.0
 fastapi>=0.115
