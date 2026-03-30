@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "products": {
+      ".read": true,
+      ".write": false
+    },
+    "carts": {
+      "$cartId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "orders": {
+      "$orderId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "bulk-orders": {
+      "$orderId": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
