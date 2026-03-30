@@ -1,0 +1,15 @@
+pytest>=8.0
+pytest-asyncio>=0.23
+pytest-cov>=4.0
+httpx>=0.25
+shapely>=2.0
+numpy>=1.26
+Pillow>=10.0
+opencv-python-headless>=4.8
+svgwrite>=1.4
+pydantic>=2.0
+pydantic-settings>=2.0
+rectpack>=0.1
+rembg>=2.0
+reportlab>=4.0
+fastapi>=0.115

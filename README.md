@@ -1,40 +1,90 @@
 # Magnet Manufacturing Platform
 
-A unified software platform for custom magnet manufacturing.
-
-## Core Features
-1. **Automated Pre-Press & Nesting Engine** — AI-powered image processing, background removal, contour detection, bleed areas, SVG cutlines, and optimized 2D bin-packing
-2. **B2B Bulk Personalization Portal** — Multi-tenant storefront with CSV-upload for bulk roster personalization
-3. **AI-Native Print Shop Manager (MIS)** — LLM-powered email quoting, real-time material waste calculation, gross margin tracking, and CNC plotter routing
-
-## Tech Stack
-- **Frontend:** Next.js, React, TypeScript (strict mode)
-- **Commerce:** Medusa.js (headless commerce)
-- **Backend:** Python, FastAPI, Docker microservices
-- **Database:** PostgreSQL (multi-tenant)
-- **AI/CV:** OpenCV, background removal APIs, LLM integrations
-- **Nesting:** C++ with Python bindings (2D polygon bin-packing)
-- **Infrastructure:** GCP Cloud Run, Docker
+Custom photo magnet e-commerce platform with consumer storefront and B2B bulk ordering.
 
 ## Architecture
+
+- **commerce/** — Express + TypeORM REST API (PostgreSQL)
+- **frontend/** — Next.js 14 + Tailwind CSS storefront & B2B portal
+
+## Quick Start
+
+### With Docker Compose
+```bash
+docker compose up --build
 ```
-┌─────────────────────────────────────────┐
-│            Next.js Frontend              │
-│   Consumer Store + B2B Bulk Portal       │
-├─────────────┬───────────┬───────────────┤
-│  Medusa.js  │  PrePress │    MIS        │
-│  Commerce   │  Service  │   Service     │
-│  (Node.js)  │ (FastAPI) │  (FastAPI)    │
-├─────────────┼───────────┼───────────────┤
-│         PostgreSQL (Multi-Tenant)        │
-└─────────────────────────────────────────┘
+- Frontend: http://localhost:3000
+- API: http://localhost:9000
+
+### Manual Setup
+
+1. **Database** — PostgreSQL on port 5433:
+```bash
+docker run -d --name magnet-pg -p 5433:5432 \
+  -e POSTGRES_DB=magnet_platform \
+  -e POSTGRES_USER=magnet \
+  -e POSTGRES_PASSWORD=magnet_dev \
+  postgres:16-alpine
 ```
 
-## Microservices
-- `commerce/` — Medusa.js headless commerce (products, orders, tenants)
-- `backend/prepress/` — Image processing: bg removal, contour detection, bleed, cutlines
-- `backend/nesting/` — 2D polygon bin-packing optimization
-- `backend/mis/` — Print shop MIS: quoting, routing, margin calculation
+2. **Commerce API**:
+```bash
+cd commerce && npm install
+npm run migrate
+npm run seed    # Load sample products
+npm run dev     # Runs on :9000
+```
 
-## Private Repository
-https://github.com/AjayaDahal/magnet-manufacturing-platform
+3. **Frontend**:
+```bash
+cd frontend && npm install
+npm run dev     # Runs on :3000
+```
+
+## Features
+
+### Consumer Storefront
+- Browse magnet products by shape, material, finish
+- Photo upload with live magnet preview
+- Size/finish selector with real-time pricing
+- Volume pricing tiers (up to 50% off at 1000+ units)
+- Cart and checkout flow
+
+### B2B Portal
+- Email-based login
+- CSV bulk upload (columns: name, photo_url, quantity, size)
+- Server-side validation with error reporting
+- Estimated total with tiered pricing
+- Order tracking and invoice history
+
+### Multi-Tenant
+- Tenant management API (slug, branding, settings)
+- Products scoped to tenants
+- Tenant-specific storefronts
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /api/products | List products |
+| GET | /api/products/:id | Get product detail |
+| POST | /api/products | Create product |
+| GET | /api/products/:id/price | Calculate tiered price |
+| POST | /api/cart | Create cart |
+| GET | /api/cart/:id | Get cart |
+| POST | /api/cart/:id/items | Add to cart |
+| POST | /api/checkout | Place order |
+| GET | /api/checkout/orders | List orders |
+| POST | /api/bulk-orders/upload | Upload CSV bulk order |
+| GET | /api/bulk-orders/:id | Get bulk order status |
+| POST | /api/bulk-orders/:id/confirm | Confirm bulk order |
+| POST | /api/uploads/photo | Upload photo |
+| GET/POST | /api/tenants | Manage tenants |
+
+## Product Model
+
+- **Shapes**: Rectangle, Circle, Square, Oval, Heart, Custom
+- **Materials**: Flexible, Rigid, Vinyl, Photo Paper, UV Coated
+- **Sizes**: 2×3", 3×4", 4×6", 5×7", 8×10"
+- **Finishes**: Matte, Glossy, Satin, Soft Touch
+- **Pricing Tiers**: 1-9, 10-49, 50-99, 100-499, 500-999, 1000+
